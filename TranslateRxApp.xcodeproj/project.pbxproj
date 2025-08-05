@@ -14,6 +14,9 @@
 		6E0B5A182C759CE700FF3541 /* TranslateRxAppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E0B5A172C759CE700FF3541 /* TranslateRxAppTests.swift */; };
 		6E0B5A222C759CE700FF3541 /* TranslateRxAppUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E0B5A212C759CE700FF3541 /* TranslateRxAppUITests.swift */; };
 		6E0B5A242C759CE700FF3541 /* TranslateRxAppUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E0B5A232C759CE700FF3541 /* TranslateRxAppUITestsLaunchTests.swift */; };
+		6E2BDAC42CA10B27001F896D /* SwiftyJSON in Frameworks */ = {isa = PBXBuildFile; productRef = 6E2BDAC32CA10B27001F896D /* SwiftyJSON */; };
+		6E2BDAC72CA10B54001F896D /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 6E2BDAC62CA10B54001F896D /* Alamofire */; };
+		6EFB3DF22C914B7800F61C79 /* SpeechView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EFB3DF12C914B7800F61C79 /* SpeechView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -44,6 +47,8 @@
 		6E0B5A1D2C759CE700FF3541 /* TranslateRxAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TranslateRxAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6E0B5A212C759CE700FF3541 /* TranslateRxAppUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslateRxAppUITests.swift; sourceTree = "<group>"; };
 		6E0B5A232C759CE700FF3541 /* TranslateRxAppUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslateRxAppUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		6E180DB32E41AAB200751078 /* TranslateRxApp.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = TranslateRxApp.xctestplan; sourceTree = "<group>"; };
+		6EFB3DF12C914B7800F61C79 /* SpeechView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -51,6 +56,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6E2BDAC42CA10B27001F896D /* SwiftyJSON in Frameworks */,
+				6E2BDAC72CA10B54001F896D /* Alamofire in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -74,6 +81,7 @@
 		6E0B59FA2C759CE400FF3541 = {
 			isa = PBXGroup;
 			children = (
+				6E180DB32E41AAB200751078 /* TranslateRxApp.xctestplan */,
 				6E0B5A052C759CE400FF3541 /* TranslateRxApp */,
 				6E0B5A162C759CE700FF3541 /* TranslateRxAppTests */,
 				6E0B5A202C759CE700FF3541 /* TranslateRxAppUITests */,
@@ -96,6 +104,7 @@
 			children = (
 				6E0B5A062C759CE400FF3541 /* TranslateRxAppApp.swift */,
 				6E0B5A082C759CE400FF3541 /* ContentView.swift */,
+				6EFB3DF12C914B7800F61C79 /* SpeechView.swift */,
 				6E0B5A0A2C759CE600FF3541 /* Assets.xcassets */,
 				6E0B5A0C2C759CE600FF3541 /* Preview Content */,
 			);
@@ -215,6 +224,10 @@
 				Base,
 			);
 			mainGroup = 6E0B59FA2C759CE400FF3541;
+			packageReferences = (
+				6E2BDAC22CA10B27001F896D /* XCRemoteSwiftPackageReference "SwiftyJSON" */,
+				6E2BDAC52CA10B54001F896D /* XCRemoteSwiftPackageReference "Alamofire" */,
+			);
 			productRefGroup = 6E0B5A042C759CE400FF3541 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -258,6 +271,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6E0B5A092C759CE400FF3541 /* ContentView.swift in Sources */,
+				6EFB3DF22C914B7800F61C79 /* SpeechView.swift in Sources */,
 				6E0B5A072C759CE400FF3541 /* TranslateRxAppApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -425,6 +439,7 @@
 				DEVELOPMENT_TEAM = 5G282CF498;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app requires access to the microphone to record audio.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -454,6 +469,7 @@
 				DEVELOPMENT_TEAM = 5G282CF498;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app requires access to the microphone to record audio.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -588,6 +604,38 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		6E2BDAC22CA10B27001F896D /* XCRemoteSwiftPackageReference "SwiftyJSON" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/SwiftyJSON/SwiftyJSON";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.0.2;
+			};
+		};
+		6E2BDAC52CA10B54001F896D /* XCRemoteSwiftPackageReference "Alamofire" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Alamofire/Alamofire";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.9.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		6E2BDAC32CA10B27001F896D /* SwiftyJSON */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6E2BDAC22CA10B27001F896D /* XCRemoteSwiftPackageReference "SwiftyJSON" */;
+			productName = SwiftyJSON;
+		};
+		6E2BDAC62CA10B54001F896D /* Alamofire */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6E2BDAC52CA10B54001F896D /* XCRemoteSwiftPackageReference "Alamofire" */;
+			productName = Alamofire;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 6E0B59FB2C759CE400FF3541 /* Project object */;
 }

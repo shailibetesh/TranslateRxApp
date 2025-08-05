@@ -1,0 +1,37 @@
+{
+  "configurations" : [
+    {
+      "id" : "78298F6A-7021-4E77-84F0-CEE79702C520",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:TranslateRxApp.xcodeproj",
+      "identifier" : "6E0B5A022C759CE400FF3541",
+      "name" : "TranslateRxApp"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:TranslateRxApp.xcodeproj",
+        "identifier" : "6E0B5A122C759CE700FF3541",
+        "name" : "TranslateRxAppTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:TranslateRxApp.xcodeproj",
+        "identifier" : "6E0B5A1C2C759CE700FF3541",
+        "name" : "TranslateRxAppUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

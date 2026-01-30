@@ -4,12 +4,12 @@
 //
 //  Created by Shaili Betesh on 8/20/24.
 //
-
 import SwiftUI
 import AVFoundation
 import Alamofire
 import SwiftyJSON
 import Speech
+
 
 struct ResponseData : Decodable {
     let questions : [String]
@@ -39,8 +39,6 @@ class ApiService {
         }
     }
 }
-
-
 class MainAudioHandler : ObservableObject {
     @Published var canRecord = false
     @Published var isRecording = false
@@ -49,6 +47,7 @@ class MainAudioHandler : ObservableObject {
     @Published var transcriptContent: String? = nil
     @Published var translatedContent: String? = nil
     @Published var toggleLanguage: Bool = true
+    @Published var toggleRecorder: Bool = true
     @Published var processStarted: Bool = false
     @Published var questions: [String] = []
     @Published var isLoading = false
@@ -57,7 +56,9 @@ class MainAudioHandler : ObservableObject {
     private var audioPlayer : AVAudioPlayer?
     private var audioRecorder : AVAudioRecorder?
     private var transcript: String? = nil
-    private var transcriptEndpoint: String = "https://5ymnjpng6d.execute-api.us-east-1.amazonaws.com/GetTranscript/mytranscriber"
+    private var extractedTranscriptId : String? = nil
+    private var transcriptEndpoint: String = "https://5ymnjpng6d.execute-api.us-east-1.amazonaws.com/GetTranscript/transcription-generation"
+    private var fetchEndpoint: String = "https://5ymnjpng6d.execute-api.us-east-1.amazonaws.com/GetTranscript/get-translation"
     private var questionGenerationEndpoint: String = "https://5ymnjpng6d.execute-api.us-east-1.amazonaws.com/GetTranscript/questionGenerator"
     
     private let apiService = ApiService()
@@ -113,6 +114,7 @@ class MainAudioHandler : ObservableObject {
             audioRecorder = try AVAudioRecorder(url: recordingURL,
                                                 settings: settings)
             audioRecorder?.record() //start the recording
+            print(audioRecorder)
             isRecording = true
         } catch {
             print(error)
@@ -121,12 +123,12 @@ class MainAudioHandler : ObservableObject {
     }
     
     
-    func stopRecording() {
+    func stopRecording(selectedLanguage: String) {
         audioRecorder?.stop()
         isRecording = false
         audioFileURL = recordingURL
         self.processStarted = true
-        self.getTranscriptContents()
+        self.getTranscriptContents(toggledLanguage: selectedLanguage)
         
     }
     
@@ -145,13 +147,18 @@ class MainAudioHandler : ObservableObject {
     }
     
     func translateAndSpeak(script: String, selectLanguage: Bool) {
-        var languageSelection: String = "es-ES"
+        //var languageSelection: String = "es-ES"
+        var languageSelection: String = "zh-CN"
         // Translate transcriptionText from English to Spanish using an external translation API
         // let translatedText = translateToSpanish(text: transcriptionText)
-        if !selectLanguage {
+        if !toggleRecorder {
             languageSelection = "en-US"
+        } else {
+            if !selectLanguage {
+                languageSelection = "es-ES"
+            }
         }
-        
+        print(languageSelection)
         // Use AVSpeechSynthesizer to speak the translated text
         let utterance = AVSpeechUtterance(string: script)
         utterance.voice = AVSpeechSynthesisVoice(language: languageSelection)
@@ -162,6 +169,10 @@ class MainAudioHandler : ObservableObject {
     
     func languageToggler(){
         self.toggleLanguage = !toggleLanguage
+    }
+    
+    func recorderToggler(){
+        self.toggleRecorder = !toggleRecorder
     }
     
     
@@ -195,6 +206,7 @@ class MainAudioHandler : ObservableObject {
                     ]
                     // Replace with your actual URL
                     let responseData = try await apiService.fetchData(from: questionGenerationEndpoint, payload: createPayload)
+                    print(responseData)
                     DispatchQueue.main.async {
                         self.questions = responseData.data.questions
                         self.isLoading = false
@@ -213,9 +225,115 @@ class MainAudioHandler : ObservableObject {
         
     }
     
+    private func pollTranscriptStatus(transcriptId: String) {
+        Task { @MainActor in
+            guard !transcriptId.isEmpty else {
+                print("pollTranscriptStatus: transcriptId is empty")
+                isProcessing = false
+                return
+            }
+
+            isProcessing = true
+            var attempts = 0
+            let maxAttempts = 6
+            let intervalNs: UInt64 = 5_000_000_000
+
+            while true {
+                // 1) Build URL with query string using URLComponents (no manual encoding)
+                guard let baseURL = URL(string: fetchEndpoint),
+                      var comps = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)
+                else {
+                    print("pollTranscriptStatus: invalid transcriptEndpoint:", transcriptEndpoint)
+                    isProcessing = false
+                    break
+                }
+
+                // Print or use the Base64 string
+                let createGetPayload: [String: Any] = [
+                    "httpMethod":"POST",
+                    "body": [
+                        "transcriptId": transcriptId,
+                    ]
+                ]
+                print(createGetPayload)
+                
+                // 2) Make a plain GET (no parameters — query already on URL)
+                let req = AF.request(
+                    fetchEndpoint,
+                    method: .post,
+                    parameters: createGetPayload,
+                    encoding: JSONEncoding.default
+                    
+                )
+
+                var shouldStop = false
+
+                await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+                    req.responseJSON { [weak self] resp in
+                        defer { cont.resume() }
+                        guard let self = self else { return }
+
+                        switch resp.result {
+                        case .success(let value):
+                            let json = JSON(value)
+                            // Adjust to your actual schema; try both if unsure:
+                            let status =
+                                json["data"]["translation"]["status"].string?.uppercased()
+                                ?? ""
+
+                            print("poll status:", status, "raw:", json)
+
+                            switch status {
+                            case "COMPLETED":
+                                self.transcriptContent =
+                                    json["data"]["translation"]["original_transcript"].stringValue
+                                self.translatedContent =
+                                    json["data"]["translation"]["translation"].stringValue
+                                let stringTranslatedContent = self.translatedContent
+                                // create the synthesis speaker
+                                self.translateAndSpeak(script: stringTranslatedContent ?? "Error", selectLanguage: self.toggleLanguage)
+                                // select user symptoms and call the API
+                                let symptoms = self.toggleRecorder ? self.transcriptContent : self.translatedContent
+                                self.generateQuestions(user: symptoms)
+                                self.isProcessing = false
+                                shouldStop = true
+
+                            case "FAILED":
+                                self.transcriptContent = "Transcript Generation Failed"
+                                self.isProcessing = false
+                                shouldStop = true
+
+                            default:
+                                // PENDING / PROCESSING — keep polling
+                                break
+                            }
+
+                        case .failure(let error):
+                            print("Poll GET error:", error.localizedDescription)
+                            // Decide whether to stop on network error
+                            // shouldStop = true
+                        }
+                    }
+                }
+
+                if shouldStop { break }
+
+                attempts += 1
+                if attempts >= maxAttempts {
+                    print("Polling timeout.")
+                    isProcessing = false
+                    break
+                }
+
+                try? await Task.sleep(nanoseconds: intervalNs)
+            }
+        }
+    }
+
     
-    func getTranscriptContents() {
+    func getTranscriptContents(toggledLanguage: String) {
         isProcessing = true
+        print("invokeAPI")
         
         // Load the .wav file from the bundle or from a file path
         // This must be changed with recording.wav
@@ -226,11 +344,17 @@ class MainAudioHandler : ObservableObject {
                 // Step 2: Convert the Data to Base64 encoded string
                 let base64String = fileData.base64EncodedString()
                 
+                var languageUsing: String = toggledLanguage
+                if (toggledLanguage == "mandarin"){
+                    languageUsing = "mandarin"
+                }
+                
                 // Print or use the Base64 string
                 let createPayload: [String: Any] = [
                     "httpMethod":"POST",
                     "body": [
-                        "audio": base64String
+                        "audio": base64String,
+                        "language": languageUsing
                     ]
                 ]
                 // send the p[ost request
@@ -246,16 +370,19 @@ class MainAudioHandler : ObservableObject {
                     switch response.result {
                     case .success(let value):
                         let json  = JSON(value)
-                        let transcriptAudioContent = json["data"]["transcript"].stringValue
-                        self.transcriptContent = transcriptAudioContent
-                        let translatedAudioContent = json["data"]["translate"].stringValue
-                        self.translatedContent = translatedAudioContent
-                        // create the synthesis speaker
-                        self.translateAndSpeak(script: translatedAudioContent, selectLanguage: self.toggleLanguage)
-                        // select user symptoms and call the API
-                        let symptoms = self.toggleLanguage ? self.transcriptContent : self.translatedContent
-                        self.generateQuestions(user: symptoms)
-                        self.isProcessing = false
+                        print(json)
+                        let transcriptId = json["data"]["transcriptId"].stringValue
+                        self.extractedTranscriptId = transcriptId
+                        print(transcriptId)
+                        guard !transcriptId.isEmpty else {
+                            self.transcriptContent = "Failed to get transcript id."
+                            self.isProcessing = false
+                            return
+                        }
+
+                        // 2) Start polling
+                        self.pollTranscriptStatus(transcriptId: transcriptId)
+                        
                     case .failure(let error):
                         let message = "Error: \(error.localizedDescription)"
                         print(message)
@@ -263,7 +390,6 @@ class MainAudioHandler : ObservableObject {
                         self.isProcessing = false
                     }
                 }
-                
             } catch {
                 print("Error reading file: \(error.localizedDescription)")
                 self.isProcessing = false
@@ -276,8 +402,6 @@ class MainAudioHandler : ObservableObject {
         }
     }
 }
-
-
 struct ListItemView: View {
     var title: String
     var content: [String]
@@ -310,13 +434,13 @@ struct ListItemView: View {
     }
 }
     
-
 struct ContentView: View {
     
     let appTitle: String = "TranslateRx"
     private var guide: [String] = [
+        "Use the speak button to chose the speaker between English or a Foreign Language.",
         "Use the language button to toggle between languages.",
-        "E stands for English and S stands for Spanish.",
+        "M stands for Mandarin and S stands for Spanish.",
         "Use respective mic button to speak up with the language you selected.",
         "After generating script and translated script, use clear button indicated by C to record another audio."
     ]
@@ -348,7 +472,7 @@ struct ContentView: View {
                         } else {
                             if audioManager.transcriptContent != nil && audioManager.translatedContent != nil {
                                 Text(
-                                    audioManager.toggleLanguage ? audioManager.transcriptContent ?? "Error getting the transcript" : audioManager.translatedContent ?? "Error getting the translation"
+                                    audioManager.toggleRecorder ? audioManager.transcriptContent ?? "Error getting the transcript" : audioManager.translatedContent ?? "Error getting the translation"
                                 )
                                 .font(.system(size: 14, weight: .bold))
                             }
@@ -360,10 +484,12 @@ struct ContentView: View {
                                 })
                                 .foregroundColor(.black)
                                 .padding()
-                                .disabled(audioManager.isProcessing || !audioManager.toggleLanguage)
+                                .disabled(audioManager.isProcessing || !audioManager.toggleRecorder)
                             } else {
                                 Button("", systemImage: "stop.circle", action: {
-                                    audioManager.stopRecording()
+                                    audioManager.stopRecording(
+                                        selectedLanguage: audioManager.toggleLanguage ? "mandarin" : "spanish"
+                                    )
                                 })
                                 .foregroundColor(.black)
                                 .padding()
@@ -378,7 +504,7 @@ struct ContentView: View {
                     )
                     //spanish
                     VStack(alignment: .leading, spacing: 30){
-                        Text("Spanish")
+                        Text(audioManager.toggleLanguage ? "Mandarin" : "Spanish")
                             .font(.system(size: 18, weight: .bold))
                         Spacer()
                         if audioManager.isProcessing{
@@ -388,7 +514,7 @@ struct ContentView: View {
                         } else {
                             if audioManager.transcriptContent != nil && audioManager.translatedContent != nil {
                                 Text(
-                                    audioManager.toggleLanguage ? audioManager.translatedContent ?? "Error getting the translation" : audioManager.transcriptContent ?? "Error getting the transcription"
+                                    audioManager.toggleRecorder ? audioManager.translatedContent ?? "Error getting the translation" : audioManager.transcriptContent ?? "Error getting the transcription"
                                 )
                                 .font(.system(size: 14, weight: .bold))
                             }
@@ -400,10 +526,12 @@ struct ContentView: View {
                                 })
                                 .foregroundColor(.black)
                                 .padding()
-                                .disabled(audioManager.isProcessing || audioManager.toggleLanguage)
+                                .disabled(audioManager.isProcessing || audioManager.toggleRecorder)
                             } else {
                                 Button("", systemImage: "stop.circle", action: {
-                                    audioManager.stopRecording()
+                                    audioManager.stopRecording(
+                                        selectedLanguage: audioManager.toggleLanguage ? "mandarin" : "spanish"
+                                    )
                                 })
                                 .foregroundColor(.black)
                                 .padding()
@@ -416,6 +544,18 @@ struct ContentView: View {
                         RoundedRectangle(cornerRadius: 16)
                             .stroke(.black, lineWidth: 2.5)
                     )
+                    HStack{
+                        Spacer()
+                        Button(audioManager.toggleRecorder ? "Speak in English":"Speak in Foreign Language", action: {
+                            audioManager.recorderToggler()
+                        })
+                        .padding()
+                        .foregroundColor(.white)
+                        .background(Color.blue)
+                        .cornerRadius(10)
+                        .disabled(audioManager.processStarted)
+                        Spacer()
+                    }
                     //list view
                     if audioManager.viewInstructions{
                         ListItemView(title: "Instructions", content: guide, loadingContent: audioManager.isProcessing)
@@ -436,7 +576,7 @@ struct ContentView: View {
                             Button(action: {
                                 audioManager.languageToggler()
                             }) {
-                                Text(audioManager.toggleLanguage ? "E" : "S")
+                                Text(audioManager.toggleLanguage ? "M" : "S")
                                     .font(.system(size: 15, weight: .bold))
                                     .foregroundColor(.white)
                             }
@@ -463,11 +603,11 @@ struct ContentView: View {
                         .frame(width: 75, height: 75)
                 }
                 .padding()
+                
             }
         }
     }
 }
-
 #Preview {
     ContentView()
 }

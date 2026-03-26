@@ -19,12 +19,16 @@ struct ImageTranslateView: View {
 
             // Top bar
             HStack {
-                Text("Logo")
-                    .font(.system(size: 22))
+                Image("TranslateRxLogo")
+                    .resizable()
+                    .frame(maxWidth: 70, maxHeight: 70)
+                    .scaledToFit()
+//                Text("Logo")
+//                    .font(.system(size: 22))
                 Spacer()
                 Text("TranslateRX")
                     .font(.system(size: 22))
-                Spacer()
+//                Spacer()
                 Color.clear.frame(width: 44, height: 1)
             }
             .padding(.horizontal, 16)
@@ -39,7 +43,7 @@ struct ImageTranslateView: View {
                     VStack(spacing: 6) {
                         Image(systemName: "square.and.arrow.up")
                             .font(.system(size: 18, weight: .semibold))
-                        Text("File Upload\nIcon")
+                        Text("File Upload")
                             .font(.system(size: 14))
                             .multilineTextAlignment(.center)
                     }
